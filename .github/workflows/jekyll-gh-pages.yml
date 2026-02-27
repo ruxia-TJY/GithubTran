@@ -31,7 +31,8 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Inject secrets into config
-        run: echo "gh_upload_token: $GH_UPLOAD_TOKEN" >> _config.yml
+        run: |
+          echo "gh_upload_token: $GH_UPLOAD_TOKEN" >> _config.yml
         env:
           GH_UPLOAD_TOKEN: ${{ secrets.GH_UPLOAD_TOKEN }}
 
