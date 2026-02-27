@@ -1,0 +1,15 @@
+# WebStorm / JetBrains
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Node (if ever added)
+node_modules/
+
+# Logs
+*.log
