@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GithubTran - 临时文件传输</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --border: #d0d7de;
+            --text: #1f2328;
+            --text-muted: #656d76;
+            --primary: #0969da;
+            --primary-hover: #0550ae;
+            --danger: #da3633;
+            --danger-hover: #b62324;
+            --success: #1a7f37;
+            --overlay: rgba(1, 4, 9, 0.5);
+            --radius: 6px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0d1117;
+                --bg-secondary: #161b22;
+                --border: #30363d;
+                --text: #e6edf3;
+                --text-muted: #8b949e;
+                --primary: #58a6ff;
+                --primary-hover: #79c0ff;
+                --danger: #f85149;
+                --danger-hover: #ff7b72;
+                --success: #3fb950;
+                --overlay: rgba(1, 4, 9, 0.8);
+            }
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+        }
+
+        /* ── Header ── */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text);
+            text-decoration: none;
+        }
+        .header-logo svg { fill: var(--text); }
+
+        /* ── Main ── */
+        .main {
+            max-width: 800px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+
+        /* ── Alert ── */
+        .alert {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            border: 1px solid;
+        }
+        .alert-warning {
+            background: #fff8c5;
+            border-color: #d4a72c;
+            color: #633c01;
+        }
+        @media (prefers-color-scheme: dark) {
+            .alert-warning { background: #2d2208; border-color: #9e6a03; color: #e3b341; }
+        }
+
+        /* ── Upload zone ── */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 48px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s, transform 0.15s;
+            background: var(--bg-secondary);
+            user-select: none;
+        }
+        .upload-zone:hover { border-color: var(--primary); background: var(--bg); }
+        .upload-zone.drag-over { border-color: var(--primary); background: var(--bg); transform: scale(1.01); }
+        .upload-icon { font-size: 40px; margin-bottom: 12px; }
+        .upload-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+        .upload-hint { color: var(--text-muted); font-size: 12px; margin-top: 6px; }
+        .upload-link { color: var(--primary); }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: transparent; border-color: var(--border); color: var(--text); }
+        .btn-secondary:hover { background: var(--bg-secondary); }
+        .btn-danger { background: transparent; color: var(--danger); padding: 4px 8px; }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .btn-icon { background: transparent; color: var(--text-muted); padding: 4px 8px; }
+        .btn-icon:hover { color: var(--text); background: var(--bg-secondary); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* ── Section header ── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 24px 0 12px;
+        }
+        .section-title { font-weight: 600; font-size: 16px; }
+
+        /* ── File list ── */
+        .file-list {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+            transition: background 0.1s;
+        }
+        .file-item:last-child { border-bottom: none; }
+        .file-item:hover { background: var(--bg-secondary); }
+        .file-icon { font-size: 20px; flex-shrink: 0; }
+        .file-info { flex: 1; min-width: 0; }
+        .file-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-meta { color: var(--text-muted); font-size: 12px; }
+        .file-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+        /* ── Upload progress ── */
+        .upload-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+        .upload-item:last-child { border-bottom: none; }
+        .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); border-radius: 2px; transition: width 0.3s; }
+
+        /* ── Empty state ── */
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--overlay);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 16px;
+        }
+        .modal {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .modal-title { font-size: 18px; font-weight: 600; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-weight: 500; margin-bottom: 6px; }
+        .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .form-hint a { color: var(--primary); }
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            background: var(--bg);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            font-family: ui-monospace, monospace;
+        }
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.2);
+        }
+        .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+
+        /* ── Toast ── */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            color: #fff;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            animation: slideIn 0.2s ease;
+            max-width: 320px;
+        }
+        .toast-success { background: var(--success); }
+        .toast-error { background: var(--danger); }
+        .toast-info { background: var(--primary); }
+        @keyframes slideIn { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .hidden { display: none !important; }
+        code { font-family: ui-monospace, monospace; background: var(--bg-secondary); padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+    <a href="#" class="header-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        GithubTran
+    </a>
+    <button class="btn btn-secondary" id="settingsBtn">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/>
+        </svg>
+        设置
+    </button>
+</header>
+
+<!-- ── Main ── -->
+<main class="main">
+
+    <div class="alert alert-warning hidden" id="configWarning">
+        ⚠️ 请先点击右上角 <strong>设置</strong>，填写 GitHub Token 和仓库信息后即可使用。
+    </div>
+
+    <!-- Upload zone -->
+    <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" multiple hidden>
+        <div class="upload-icon">📁</div>
+        <div class="upload-title">拖拽文件到此处上传</div>
+        <div class="upload-hint">或 <span class="upload-link" id="browseBtn">点击选择文件</span></div>
+        <div class="upload-hint">单文件最大 25 MB（GitHub API 限制）</div>
+    </div>
+
+    <!-- Active uploads -->
+    <div id="activeUploadsSection" class="hidden">
+        <div class="section-header">
+            <span class="section-title">上传中</span>
+        </div>
+        <div class="file-list" id="uploadingList"></div>
+    </div>
+
+    <!-- File list -->
+    <div class="section-header">
+        <span class="section-title">
+            已上传文件
+            <span id="fileCount" style="color: var(--text-muted); font-weight: normal;"></span>
+        </span>
+        <button class="btn btn-secondary" id="refreshBtn">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+            </svg>
+            刷新
+        </button>
+    </div>
+
+    <div class="empty-state" id="emptyState">暂无已上传文件</div>
+    <div class="file-list hidden" id="fileList"></div>
+
+</main>
+
+<!-- ── Settings Modal ── -->
+<div class="modal-overlay hidden" id="settingsModal">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">GitHub 配置</span>
+            <button class="btn btn-icon" id="closeSettings" style="font-size: 20px; line-height: 1;">×</button>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="tokenInput">Personal Access Token</label>
+            <input class="form-input" type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+            <p class="form-hint">
+                需要 <code>repo</code> 权限（公开仓库可仅选 <code>public_repo</code>）。
+                <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener">创建 Token →</a>
+            </p>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="ownerInput">仓库所有者（用户名或组织）</label>
+            <input class="form-input" type="text" id="ownerInput" placeholder="your-username">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="repoInput">仓库名称</label>
+            <input class="form-input" type="text" id="repoInput" placeholder="my-transfer-repo">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="branchInput">分支</label>
+            <input class="form-input" type="text" id="branchInput" placeholder="main">
+            <p class="form-hint">文件将上传至该分支的 <code>uploads/</code> 目录下。</p>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelSettings">取消</button>
+            <button class="btn btn-primary" id="saveSettings">保存设置</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Toast container ── -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ────────────────────────────────────────────
+//  Config helpers
+// ────────────────────────────────────────────
+const STORAGE_KEY = 'githubtran_config';
+const UPLOADS_DIR = 'uploads';
+
+function getConfig() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+    catch { return {}; }
+}
+function saveConfig(cfg) { localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); }
+function isConfigured() {
+    const c = getConfig();
+    return !!(c.token && c.owner && c.repo && c.branch);
+}
+
+// ────────────────────────────────────────────
+//  GitHub API
+// ────────────────────────────────────────────
+async function ghFetch(path, options = {}) {
+    const { token } = getConfig();
+    return fetch(`https://api.github.com${path}`, {
+        ...options,
+        headers: {
+            Authorization: `token ${token}`,
+            'Content-Type': 'application/json',
+            Accept: 'application/vnd.github.v3+json',
+            ...(options.headers || {}),
+        },
+    });
+}
+
+async function listUploadedFiles() {
+    const { owner, repo, branch } = getConfig();
+    const res = await ghFetch(`/repos/${owner}/${repo}/contents/${UPLOADS_DIR}?ref=${branch}`);
+    if (res.status === 404) return [];
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || '获取文件列表失败'); }
+    const data = await res.json();
+    return Array.isArray(data) ? data.filter(f => f.type === 'file') : [];
+}
+
+async function getFileSha(filename) {
+    const { owner, repo, branch } = getConfig();
+    const res = await ghFetch(
+        `/repos/${owner}/${repo}/contents/${UPLOADS_DIR}/${encodeURIComponent(filename)}?ref=${branch}`
+    );
+    if (!res.ok) return null;
+    return (await res.json()).sha;
+}
+
+async function uploadFile(filename, base64Content) {
+    const { owner, repo, branch } = getConfig();
+    const sha = await getFileSha(filename);
+    const body = { message: `Upload ${filename} via GithubTran`, content: base64Content, branch };
+    if (sha) body.sha = sha;
+
+    const res = await ghFetch(
+        `/repos/${owner}/${repo}/contents/${UPLOADS_DIR}/${encodeURIComponent(filename)}`,
+        { method: 'PUT', body: JSON.stringify(body) }
+    );
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || '上传失败'); }
+    return res.json();
+}
+
+async function deleteFile(path, sha) {
+    const { owner, repo, branch } = getConfig();
+    const res = await ghFetch(`/repos/${owner}/${repo}/contents/${path}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ message: `Delete ${path} via GithubTran`, sha, branch }),
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message || '删除失败'); }
+}
+
+// ────────────────────────────────────────────
+//  Utilities
+// ────────────────────────────────────────────
+function readAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function fileEmoji(name) {
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    const m = {
+        pdf: '📄', doc: '📝', docx: '📝', txt: '📝', md: '📝',
+        jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', svg: '🖼️', webp: '🖼️', bmp: '🖼️',
+        mp4: '🎬', mov: '🎬', avi: '🎬', mkv: '🎬', webm: '🎬',
+        mp3: '🎵', wav: '🎵', flac: '🎵', aac: '🎵',
+        zip: '📦', rar: '📦', '7z': '📦', tar: '📦', gz: '📦',
+        js: '💻', ts: '💻', py: '💻', java: '💻', go: '💻', rs: '💻', c: '💻', cpp: '💻',
+        html: '🌐', css: '🎨', json: '📋', xml: '📋', yaml: '📋', yml: '📋',
+        xlsx: '📊', xls: '📊', csv: '📊', pptx: '📊', ppt: '📊',
+    };
+    return m[ext] || '📎';
+}
+
+function getDownloadUrl(filename) {
+    const { owner, repo, branch } = getConfig();
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${UPLOADS_DIR}/${encodeURIComponent(filename)}`;
+}
+
+// ────────────────────────────────────────────
+//  Toast
+// ────────────────────────────────────────────
+function toast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = msg;
+    document.getElementById('toastContainer').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+}
+
+// ────────────────────────────────────────────
+//  File list rendering
+// ────────────────────────────────────────────
+async function loadFileList() {
+    if (!isConfigured()) {
+        document.getElementById('configWarning').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('configWarning').classList.add('hidden');
+
+    const btn = document.getElementById('refreshBtn');
+    btn.disabled = true;
+    btn.textContent = '加载中…';
+
+    try {
+        renderFileList(await listUploadedFiles());
+    } catch (err) {
+        toast('获取列表失败：' + err.message, 'error');
+        const el = document.getElementById('emptyState');
+        el.textContent = '加载失败，请检查配置';
+        el.classList.remove('hidden');
+        document.getElementById('fileList').classList.add('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+        </svg> 刷新`;
+    }
+}
+
+function renderFileList(files) {
+    const empty = document.getElementById('emptyState');
+    const list  = document.getElementById('fileList');
+    const count = document.getElementById('fileCount');
+
+    if (!files.length) {
+        empty.textContent = '暂无已上传文件';
+        empty.classList.remove('hidden');
+        list.classList.add('hidden');
+        count.textContent = '';
+        return;
+    }
+
+    count.textContent = `(${files.length})`;
+    empty.classList.add('hidden');
+    list.classList.remove('hidden');
+    list.innerHTML = '';
+
+    files.forEach(file => {
+        const dlUrl = getDownloadUrl(file.name);
+        const item  = document.createElement('div');
+        item.className = 'file-item';
+        item.innerHTML = `
+            <span class="file-icon">${fileEmoji(file.name)}</span>
+            <div class="file-info">
+                <div class="file-name" title="${escHtml(file.name)}">${escHtml(file.name)}</div>
+                <div class="file-meta">
+                    ${formatSize(file.size)}
+                    &nbsp;·&nbsp;
+                    <a href="${dlUrl}" target="_blank" rel="noopener" style="color:var(--primary);">直接下载</a>
+                </div>
+            </div>
+            <div class="file-actions">
+                <button class="btn btn-icon copy-btn" title="复制下载链接" data-url="${escHtml(dlUrl)}">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+                        <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
+                    </svg>
+                </button>
+                <button class="btn btn-danger delete-btn" title="删除文件"
+                    data-path="${escHtml(file.path)}"
+                    data-sha="${file.sha}"
+                    data-name="${escHtml(file.name)}">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                        <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                    </svg>
+                </button>
+            </div>`;
+        list.appendChild(item);
+    });
+
+    list.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            navigator.clipboard.writeText(btn.dataset.url)
+                .then(() => toast('下载链接已复制！', 'success'))
+                .catch(() => toast('复制失败，请手动复制', 'error'));
+        });
+    });
+
+    list.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () =>
+            handleDelete(btn.dataset.path, btn.dataset.sha, btn.dataset.name, btn.closest('.file-item'))
+        );
+    });
+}
+
+async function handleDelete(path, sha, name, itemEl) {
+    if (!confirm(`确认删除文件 "${name}"？此操作无法撤销。`)) return;
+    itemEl.style.opacity = '0.4';
+    itemEl.style.pointerEvents = 'none';
+    try {
+        await deleteFile(path, sha);
+        itemEl.remove();
+        toast(`${name} 已删除`, 'success');
+        const remaining = document.querySelectorAll('#fileList .file-item').length;
+        document.getElementById('fileCount').textContent = remaining ? `(${remaining})` : '';
+        if (!remaining) {
+            document.getElementById('emptyState').textContent = '暂无已上传文件';
+            document.getElementById('emptyState').classList.remove('hidden');
+            document.getElementById('fileList').classList.add('hidden');
+        }
+    } catch (err) {
+        toast('删除失败：' + err.message, 'error');
+        itemEl.style.opacity = '';
+        itemEl.style.pointerEvents = '';
+    }
+}
+
+// ────────────────────────────────────────────
+//  Upload handling
+// ────────────────────────────────────────────
+async function handleFiles(fileList) {
+    if (!isConfigured()) {
+        toast('请先配置 GitHub 设置', 'error');
+        openSettings();
+        return;
+    }
+    const MAX = 25 * 1024 * 1024;
+    const valid = [...fileList].filter(f => {
+        if (f.size > MAX) { toast(`${f.name} 超过 25 MB，已跳过`, 'error'); return false; }
+        return true;
+    });
+    if (!valid.length) return;
+
+    document.getElementById('activeUploadsSection').classList.remove('hidden');
+    for (const file of valid) await uploadSingleFile(file);
+    await loadFileList();
+}
+
+async function uploadSingleFile(file) {
+    const ul = document.getElementById('uploadingList');
+    const item = document.createElement('div');
+    item.className = 'upload-item';
+    item.innerHTML = `
+        <span class="file-icon">${fileEmoji(file.name)}</span>
+        <div style="flex:1;min-width:0;">
+            <div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px;">${escHtml(file.name)}</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:10%"></div></div>
+        </div>
+        <span style="color:var(--text-muted);font-size:12px;flex-shrink:0;margin-left:12px;">准备中…</span>`;
+    ul.appendChild(item);
+
+    const fill   = item.querySelector('.progress-fill');
+    const status = item.querySelector('span:last-child');
+
+    try {
+        status.textContent = '读取文件…';
+        fill.style.width = '20%';
+        const b64 = await readAsBase64(file);
+
+        status.textContent = '上传中…';
+        fill.style.width = '55%';
+        await uploadFile(file.name, b64);
+
+        fill.style.width = '100%';
+        fill.style.background = 'var(--success)';
+        status.textContent = '✓ 完成';
+        status.style.color = 'var(--success)';
+        toast(`${file.name} 上传成功`, 'success');
+    } catch (err) {
+        fill.style.background = 'var(--danger)';
+        status.textContent = '✗ 失败';
+        status.style.color = 'var(--danger)';
+        toast(`${file.name} 上传失败：${err.message}`, 'error');
+    } finally {
+        setTimeout(() => {
+            item.remove();
+            if (!ul.children.length) document.getElementById('activeUploadsSection').classList.add('hidden');
+        }, 2500);
+    }
+}
+
+// ────────────────────────────────────────────
+//  Settings modal
+// ────────────────────────────────────────────
+function openSettings() {
+    const c = getConfig();
+    document.getElementById('tokenInput').value  = c.token  || '';
+    document.getElementById('ownerInput').value  = c.owner  || '';
+    document.getElementById('repoInput').value   = c.repo   || '';
+    document.getElementById('branchInput').value = c.branch || 'main';
+    document.getElementById('settingsModal').classList.remove('hidden');
+}
+function closeSettings() {
+    document.getElementById('settingsModal').classList.add('hidden');
+}
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('closeSettings').addEventListener('click', closeSettings);
+document.getElementById('cancelSettings').addEventListener('click', closeSettings);
+document.getElementById('settingsModal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeSettings();
+});
+document.getElementById('saveSettings').addEventListener('click', () => {
+    const cfg = {
+        token:  document.getElementById('tokenInput').value.trim(),
+        owner:  document.getElementById('ownerInput').value.trim(),
+        repo:   document.getElementById('repoInput').value.trim(),
+        branch: document.getElementById('branchInput').value.trim() || 'main',
+    };
+    if (!cfg.token || !cfg.owner || !cfg.repo) {
+        toast('请填写所有必填字段', 'error'); return;
+    }
+    saveConfig(cfg);
+    closeSettings();
+    toast('设置已保存', 'success');
+    loadFileList();
+});
+
+// ────────────────────────────────────────────
+//  Upload zone events
+// ────────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+const fileInput  = document.getElementById('fileInput');
+
+uploadZone.addEventListener('click', e => {
+    if (!e.target.closest('#browseBtn')) fileInput.click();
+});
+document.getElementById('browseBtn').addEventListener('click', e => {
+    e.stopPropagation(); fileInput.click();
+});
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) { handleFiles(fileInput.files); fileInput.value = ''; }
+});
+uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', ()  => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
+});
+
+document.getElementById('refreshBtn').addEventListener('click', loadFileList);
+
+// ────────────────────────────────────────────
+//  Helpers
+// ────────────────────────────────────────────
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+// ────────────────────────────────────────────
+//  Init
+// ────────────────────────────────────────────
+if (!isConfigured()) {
+    document.getElementById('configWarning').classList.remove('hidden');
+} else {
+    loadFileList();
+}
+</script>
+</body>
+</html>
