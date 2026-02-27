@@ -30,6 +30,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Inject secrets into config
+        run: echo "gh_upload_token: ${{ secrets.GH_UPLOAD_TOKEN }}" >> _config.yml
+
       - name: Build with Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
